@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: girus
+  name: girus
+spec:
+  containers:
+  - image: nginx
+    name: webserver
+    volumeMounts:
+      - mountPath: /data/portal
+        name: portal
+    resources:
+      limits:
+        cpu: "1"
+        memory: "128Mi"
+      requests:
+        cpu: "0.5"
+        memory: "64Mi"
+    args:
+    - sleep
+    - "600"
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+  volumes:
+    - name: portal
+      emptyDir:
+        sizeLimit: 256Mi
+status: {}
