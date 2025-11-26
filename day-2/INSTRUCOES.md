@@ -44,6 +44,12 @@ kubectl apply -f k8s-podfaminto.yaml
 ```
 
 ```bash
+kubectl get pod -n treinamento-ch2 -w
+NAME          READY   STATUS             RESTARTS      AGE
+pod-faminto   0/1     CrashLoopBackOff   6 (89s ago)   7m26s
+```
+
+```bash
 kubectl describe pod pod-faminto -n treinamento-ch2
 
 Name:             pod-faminto
@@ -126,3 +132,26 @@ Events:
   Normal   Pulled     2s                   kubelet            Successfully pulled image "polinux/stress" in 610ms (610ms including waiting). Image size: 4041495 bytes.
   Warning  BackOff    1s (x16 over 3m10s)  kubelet            Back-off restarting failed container stress-container in pod pod-faminto_treinamento-ch2(a9984cf4-f821-4c63-a055-5d712084c1f8)
 ```
+
+Razão da falha "OOMKilled"
+
+```bash
+State:          Terminated
+      Reason:       OOMKilled
+      Exit Code:    137
+      Started:      Wed, 26 Nov 2025 11:39:09 +0000
+      Finished:     Wed, 26 Nov 2025 11:39:09 +0000
+    Last State:     Terminated
+      Reason:       OOMKilled
+      Exit Code:    137
+      Started:      Wed, 26 Nov 2025 11:37:34 +0000
+      Finished:     Wed, 26 Nov 2025 11:37:34 +0000
+```
+
+Motivo da falha
+O OOMKilled mostra que o container tentou usar mais meória do que o limite definido ("200 Mi")
+
+
+Referência:
+ https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+ https://learn.microsoft.com/pt-br/troubleshoot/azure/azure-kubernetes/availability-performance/troubleshoot-oomkilled-aks-clusters
