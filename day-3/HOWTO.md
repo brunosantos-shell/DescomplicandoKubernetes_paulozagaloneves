@@ -204,3 +204,13 @@ Pod Template:
 $ kubectl rollout restart deployment -n giropops nginx-deployment
 deployment.apps/nginx-deployment restarted
 ```
+
+**Usando scale**
+
+```bash
+$ kubectl scale deployment -n giropops --replicas 0 nginx-deployment
+deployment.apps/nginx-deployment scaled
+
+$ kubectl scale deployment -n giropops --replicas 10 nginx-deployment
+deployment.apps/nginx-deployment scaled
+```
