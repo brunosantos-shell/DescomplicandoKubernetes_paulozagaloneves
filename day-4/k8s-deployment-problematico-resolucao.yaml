@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meu-servico
+  namespace: producao
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: meu-servico
+  template:
+    metadata:
+      labels:
+        app: meu-servico
+        version: "v2-problematica"
+    spec:
+      containers:
+      - name: meu-servico-container
+        image: linuxtips/memory-eater:0.3
+        # Simulando limites muito baixos para forçar OOMKill
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "0.10"
+          limits:
+            memory: "250Mi"
+            cpu: "0.25"
+        startupProbe:
+          httpGet:
+            path: /startupz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 3
+          failureThreshold: 10
+        livenessProbe:
+          httpGet:
+            path: /livez
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 3
+      restartPolicy: Always
+        # Sem probes = Kubernetes operando às cegas

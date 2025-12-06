@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meu-servico
+  namespace: producao
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: meu-servico
+  template:
+    metadata:
+      labels:
+        app: meu-servico
+        version: "v2-problematica"
+    spec:
+      containers:
+      - name: meu-servico-container
+        image: linuxtips/memory-eater:0.3
+        # Simulando limites muito baixos para forçar OOMKill
+        resources:
+          requests:
+            memory: "16i"
+            cpu: "0.10"
+          limits:
+            memory: "32"
+            cpu: "0.25"
+      restartPolicy: Always
+        # Sem probes = Kubernetes operando às cegas
