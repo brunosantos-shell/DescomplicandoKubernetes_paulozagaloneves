@@ -41,7 +41,9 @@ Aceder:
 http://localhost:3000
 
 **User:** admin
+
 **Senha:** admin
+
 
 ### Adicionar Dashboard
 
@@ -50,6 +52,7 @@ Adicionar o Dashboard Node Exporter Full
 **Dashboards** => **New** => **Import** 
 
 Find and import dashboards for common applications at grafana.com/dashboards
+
 **1860**                    
 
 **Load** => **Import**
