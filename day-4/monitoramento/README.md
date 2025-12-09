@@ -1,5 +1,13 @@
 # Monitoring
 
+## Criar lab no Girus
+
+[girus-cli](https://github.com/badtuxx/girus-cli)
+
+```bash
+$ girus create lab -f lab.yaml
+```
+
 ## Criar namespace monitoramento
 
 Vamos manter todos os recursos de monitoramento dentro do namespace **monitoramento**
