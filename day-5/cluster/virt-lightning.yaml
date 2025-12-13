@@ -1,0 +1,44 @@
+- name: k8s-cp-01
+  distro: debian-13
+  memory: 4096
+  vcpus: 4
+  root_disk_size: 20
+  root_password: 'giropops'
+  groups: ['k8s-day5-cluster']
+  ssh_key_file: ~/.ssh/id_ed25519.pub
+  networks:
+    - bridge: br0
+      ipv4: 192.168.1.40
+- name: k8s-w-01
+  distro: debian-13
+  memory: 4096
+  vcpus: 4
+  root_disk_size: 20
+  root_password: 'giropops'
+  groups: ['k8s-day5-cluster']
+  ssh_key_file: ~/.ssh/id_ed25519.pub
+  networks:
+    - bridge: br0
+      ipv4: 192.168.1.41      
+- name: k8s-w-02
+  distro: debian-13
+  memory: 4096
+  vcpus: 4
+  root_disk_size: 20
+  root_password: 'giropops'
+  groups: ['k8s-day5-cluster']
+  ssh_key_file: ~/.ssh/id_ed25519.pub
+  networks:
+    - bridge: br0
+      ipv4: 192.168.1.42 
+- name: k8s-w-03
+  distro: debian-13
+  memory: 4096
+  vcpus: 4
+  root_disk_size: 20
+  root_password: 'giropops'
+  groups: ['k8s-day5-cluster']
+  ssh_key_file: ~/.ssh/id_ed25519.pub
+  networks:
+    - bridge: br0
+      ipv4: 192.168.1.43 
