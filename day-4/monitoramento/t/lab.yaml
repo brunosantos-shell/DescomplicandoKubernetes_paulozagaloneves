@@ -1,0 +1,310 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubernetes-monitoramento-lab
+  namespace: girus
+  labels:
+    app: girus-lab-template
+data:
+  lab.yaml: |
+    name: kubernetes-monitoramento-lab
+    title: "Kubernetes: Monitorando nós do cluster com Prometheus e Grafana"
+    description: "Aprenda a monitorar nós em Kubernetes usando Prometheus e Grafana, ferramentas essenciais para coletar, armazenar e visualizar métricas de desempenho e saúde do cluster. Este laboratório guiado cobre a instalação, configuração e uso dessas ferramentas para garantir a observabilidade e o desempenho ideal do seu ambiente Kubernetes."
+    duration: 45m
+    image: "linuxtips/girus-kind-single-node:0.1"
+    privileged: true
+    tasks:
+      - name: "Instalar os agentes Node Exporter como DaemonSet"
+        description: "O Node Exporter é um agente que coleta métricas de hardware e sistema operacional dos nós do cluster Kubernetes. Deve ser implantado como um DaemonSet para garantir que cada nó do cluster execute uma instância do Node Exporter. Este laboratório é um complemento à aula do dia 4. Recomenda-se assistir à aula antes de iniciar este laboratório."
+        steps:
+          - "O agente **Node Exporter** coleta métricas do sistema operacional e do hardware dos nós do cluster Kubernetes."
+          - "Ele deve ser implantado como um **DaemonSet**, garantindo que cada nó do cluster execute uma instância do Node Exporter."
+          - "Na aula do dia 4, aprendemos a criar *DaemonSets*."
+          - "Agora, vamos implantar o Node Exporter (imagem: prom/node-exporter:v1.10.2, porta: 9100) como um DaemonSet no namespace **'monitoramento'**."
+          - "Crie um namespace chamado **'monitoramento'**:"
+          - "`kubectl create namespace monitoramento`"
+          - "Em seguida, crie um arquivo YAML chamado **'k8s-node-exporter-daemonset.yaml'** com o seguinte conteúdo:"
+          - |
+            ```yaml
+            apiVersion: apps/v1
+            kind: DaemonSet
+            metadata:
+              name: node-exporter-daemonset
+              labels:
+                app: node-exporter-daemonset
+              namespace: monitoramento
+            spec:
+              selector:
+                matchLabels:
+                  app: node-exporter-daemonset
+              template:
+                metadata:
+                  labels:
+                    app: node-exporter-daemonset
+                spec:
+                  hostNetwork: true     # Usar a rede do host (cuidado com conflitos de porta)
+                  containers:
+                  - name: node-exporter
+                    image: prom/node-exporter:v1.10.2
+                    ports:
+                    - containerPort: 9100
+                      hostPort: 9100       # Mapeia a porta 9100 do container para a porta 9100 do host
+                    resources:
+                      requests:
+                        cpu: "0.10"
+                        memory: "128Mi"
+                      limits:
+                        cpu: "0.20"
+                        memory: "256Mi"
+                    volumeMounts:
+                    - name: proc
+                      mountPath: /host/proc
+                      readOnly: true
+                    - name: sys
+                      mountPath: /host/sys
+                      readOnly: true
+                  volumes:
+                  - name: proc
+                    hostPath: 
+                      path: /proc      # Monta o sistema de arquivos /proc do host
+                  - name: sys
+                    hostPath:
+                      path: /sys       # Monta o sistema de arquivos /sys do host 
+            ```
+          - "Aplique o manifesto do **DaemonSet** usando o comando: "
+          - "`kubectl apply -f k8s-node-exporter-daemonset.yaml`"
+          - "Verifique se os pods do DaemonSet estão em execução com o comando: "
+          - "`kubectl get pods -n monitoramento -l app=node-exporter-daemonset -o wide`"
+          - "Você deve ver um pod do Node Exporter em execução para cada nó do cluster."
+          - "Parabéns! Você implantou com sucesso o Prometheus Node Exporter como um DaemonSet no seu cluster Kubernetes."
+
+      - name: "Instalar o Prometheus para coletar métricas dos nós"
+        description: "O Prometheus é uma ferramenta de monitoramento e alerta de código aberto amplamente utilizada em ambientes Kubernetes. Ele coleta e armazena métricas de vários alvos, incluindo o Node Exporter implantado anteriormente."
+        steps:
+          - "Agora que o Node Exporter está em execução em cada nó do cluster, vamos instalar o Prometheus para coletar essas métricas."
+          - "Crie um arquivo YAML chamado 'k8s-prometheus-mon.yaml' com o seguinte conteúdo:"
+          - |
+            ```yaml
+            ---  
+            # --------------------------------------------------------
+            # SERVICEACCOUNT + RBAC PARA PROMETHEUS
+            # --------------------------------------------------------
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: prometheus
+              namespace: monitoramento
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRole
+            metadata:
+              name: prometheus
+            rules:
+            - apiGroups: [""]
+              resources: ["nodes", "nodes/metrics", "services", "endpoints", "pods"]
+              verbs: ["get", "list", "watch"]
+            - nonResourceURLs: ["/metrics"]
+              verbs: ["get"]
+            ---
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: ClusterRoleBinding
+            metadata:
+              name: prometheus
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: ClusterRole
+              name: prometheus
+            subjects:
+            - kind: ServiceAccount
+              name: prometheus
+              namespace: monitoramento
+            ---
+            # --------------------------------------------------------
+            # PROMETHEUS CONFIGMAP (prometheus.yml)
+            # --------------------------------------------------------
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: prometheus-config
+              namespace: monitoramento
+            data:
+              prometheus.yml: |
+                global:
+                  scrape_interval: 15s
+
+                scrape_configs:
+
+                  # Scrape do próprio Prometheus
+                  - job_name: 'prometheus'
+                    static_configs:
+                      - targets: ['localhost:9090']
+
+                  # -----------------------------
+                  # SCRAPE DO NODE-EXPORTER (daemonset)
+                  # -----------------------------
+                  - job_name: 'node-exporter'
+                    kubernetes_sd_configs:
+                    - role: pod
+                    relabel_configs:
+                    # Manter apenas pods com 'app=node-exporter-daemonset'
+                    - source_labels: [__meta_kubernetes_pod_label_app]
+                      regex: node-exporter-daemonset
+                      action: keep
+
+                    # Manter containers com porta 9100
+                    - source_labels: [__meta_kubernetes_pod_container_port_number]
+                      regex: "9100"
+                      action: keep
+            ---
+            # --------------------------------------------------------
+            # PROMETHEUS DEPLOYMENT + SERVICE
+            # --------------------------------------------------------
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: prometheus
+              namespace: monitoramento
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: prometheus
+              template:
+                metadata:
+                  labels:
+                    app: prometheus
+                spec:
+                  serviceAccountName: prometheus
+                  containers:
+                  - name: prometheus
+                    image: prom/prometheus:v3.8.0
+                    args:
+                      - "--config.file=/etc/prometheus/prometheus.yml"
+                      - "--storage.tsdb.path=/prometheus"
+                      - "--storage.tsdb.retention.time=7d"
+                    ports:
+                      - containerPort: 9090
+                    volumeMounts:
+                      - name: config
+                        mountPath: /etc/prometheus
+                      - name: storage
+                        mountPath: /prometheus
+                  volumes:
+                    - name: config
+                      configMap:
+                        name: prometheus-config
+                    - name: storage
+                      emptyDir: {}
+
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: prometheus
+              namespace: monitoramento
+            spec:
+              type: ClusterIP
+              ports:
+                - port: 9090
+                  targetPort: 9090
+              selector:
+                app: prometheus
+            ```
+          - "Aplique a configuração do Prometheus usando o comando: "
+          - "`kubectl apply -f k8s-prometheus-mon.yaml`"
+          - "Verifique se o pod do Prometheus está em execução com o comando: "
+          - "`kubectl get pods -n monitoramento -l app=prometheus -o wide`" 
+          - "Você deve ver o pod do Prometheus em execução no namespace 'monitoramento'."
+          - "Agora, acesse a interface web do Prometheus para verificar se ele está coletando métricas dos nós do cluster."
+          - "Para acessar o Prometheus, você pode usar o port-forwarding com o comando: "
+          - "`kubectl port-forward -n monitoramento deployment/prometheus 9090:9090`"
+          - "Em seguida, abra o navegador e acesse: `http://localhost:9090`"
+          - "Na interface do Prometheus, vá para a aba 'Status' e depois 'Targets'."
+          - "Você deve ver o job 'node-exporter' listado com os nós do cluster como alvos ativos."
+          - "Parabéns! Você instalou com sucesso o Prometheus."
+
+      - name: "Instalar o Grafana para visualização de métricas"
+        description: "O Grafana é uma plataforma de análise e monitoramento de código aberto que permite criar dashboards interativos para visualizar métricas coletadas por ferramentas como o Prometheus."
+        steps:
+          - "Agora que o Prometheus está coletando métricas dos nós do cluster, vamos instalar o **Grafana** para visualizar essas métricas."
+          - "Crie um arquivo YAML chamado **'k8s-grafana-mon.yaml'** com o seguinte conteúdo:"
+          - |
+            ```yaml
+            ---
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: grafana-datasources
+              namespace: monitoramento
+              labels:
+                grafana_datasource: "1"
+            data:
+              datasources.yaml: |
+                apiVersion: 1
+                datasources:
+                - name: Prometheus
+                  type: prometheus
+                  url: http://prometheus.monitoramento.svc.cluster.local:9090
+                  access: proxy
+                  isDefault: true
+            ---
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: grafana
+              namespace: monitoramento
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: grafana
+              template:
+                metadata:
+                  labels:
+                    app: grafana
+                spec:
+                  containers:
+                  - name: grafana
+                    image: grafana/grafana:12.1
+                    ports:
+                      - containerPort: 3000
+                    env:
+                      - name: GF_SECURITY_ADMIN_PASSWORD
+                        value: "admin"
+                    volumeMounts:
+                      - name: datasources
+                        mountPath: /etc/grafana/provisioning/datasources
+                  volumes:
+                    - name: datasources
+                      configMap:
+                        name: grafana-datasources
+
+            ---
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: grafana
+              namespace: monitoramento
+            spec:
+              type: ClusterIP
+              ports:
+                - port: 3000
+                  targetPort: 3000
+              selector:
+                app: grafana
+            ```
+          - "Aplique a configuração do Grafana usando o comando: "
+          - "`kubectl apply -f k8s-grafana-mon.yaml`"
+          - "Verifique se o pod do Grafana está em execução com o comando: "
+          - "`kubectl get pods -n monitoramento -l app=grafana -o wide`"
+          - "Você deve ver o pod do Grafana em execução no namespace 'monitoramento'."
+          - "Agora, acesse a interface web do Grafana para configurar o dashboard."
+          - "Para acessar o Grafana, você pode usar o port-forwarding com o comando: "
+          - "`kubectl port-forward -n monitoramento deployment/grafana 3000:3000`"
+          - "Em seguida, abra o navegador e acesse: `http://localhost:3000`"
+          - "Faça login com o usuário 'admin' e a senha 'admin'."
+          - "Após o login, você pode importar dashboards pré-configurados para visualizar as métricas dos nós do cluster."
+          - "No Grafana, vá para a seção de importação de dashboards e use o ID do dashboard do Node Exporter (1860) para importar um dashboard completo para monitorar os nós."
+          - "🏆 Parabéns! Você instalou com sucesso o Grafana e configurou um dashboard para visualizar as métricas do seu cluster Kubernetes."
+
+  

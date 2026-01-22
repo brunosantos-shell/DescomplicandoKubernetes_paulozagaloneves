@@ -1,0 +1,12 @@
+- name: debian13-server
+  distro: debian-13
+  memory: 4096
+  vcpus: 4
+  context: servers
+  root_disk_size: 20
+  root_password: 'giropops'
+  groups: ['servers']
+  ssh_key_file: ~/.ssh/id_ed25519.pub
+  networks:
+    - bridge: br0
+      ipv4: 192.168.1.30

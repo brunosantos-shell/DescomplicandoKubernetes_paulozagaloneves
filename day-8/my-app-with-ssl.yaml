@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-ssl-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-ssl
+  template:
+    metadata:
+      labels:
+        app: nginx-ssl
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        - containerPort: 443
+        volumeMounts:
+        - name: nginx-config-volume
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: tls-secret-volume
+          mountPath: /etc/nginx/tls
+      volumes:
+      - name: nginx-config-volume
+        configMap:
+          name: nginx-config
+      - name: tls-secret-volume
+        secret:
+          secretName: tls-secret
+          # Specify the keys to mount (optional)
+          items:
+          - key: tls.crt
+            path: tls.crt
+          - key: tls.key
+            path: tls.key
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-ssl-service
+spec:
+  selector:
+    app: nginx-ssl
+  ports:
+  - protocol: TCP
+    name: http
+    port: 80
+    targetPort: 80
+  - protocol: TCP
+    name: https
+    port: 443
+    targetPort: 443
+  type: LoadBalancer

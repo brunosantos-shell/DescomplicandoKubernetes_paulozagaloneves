@@ -1,0 +1,5 @@
+k8s-cl-control-plane ansible_host=192.168.1.40 ansible_user=paulo ansible_python_interpreter=/usr/bin/python3 ansible_ssh_common_args="-o UserKnownHostsFile=/dev/null -o GSSAPIAuthentication=no -o GSSAPIKeyExchange=no -o StrictHostKeyChecking=no"
+
+[k8s-day5-cluster]
+k8s-cl-control-plane
+

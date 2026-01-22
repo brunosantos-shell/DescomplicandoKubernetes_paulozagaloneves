@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minion-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minion
+  template:
+    metadata:
+      labels:
+        app: minion
+    spec:
+      containers:
+      - name: minion
+        image: pauloneves/minion:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: MINION_ENV
+          value: "production"
+        - name: MINION_DEBUG
+          value: "false"
+      imagePullSecrets:
+      - name: dockerhub-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minion-service
+spec:
+  selector:
+    app: minion
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+  type: LoadBalancer

@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+immutable: true # torna o ConfigMap imutável
+data:
+  nginx.conf: |
+    # my nginx.conf file
+    events { }
+
+    http {
+      charset utf-8;
+
+      server {
+          listen 443 ssl;
+          server_name localhost;
+
+          ssl_certificate     /etc/nginx/tls/tls.crt;
+          ssl_certificate_key /etc/nginx/tls/tls.key;
+
+          location / {
+              default_type text/plain;
+              return 200 "Olá turma DK8S 2025!\n";
+          }
+        }
+    }
