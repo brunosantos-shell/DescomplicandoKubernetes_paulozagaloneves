@@ -91,3 +91,225 @@ monitoring   prometheus-adapter        7d
 monitoring   prometheus-k8s            7d
 monitoring   prometheus-operator       7d
 ```
+
+
+## PodMonitors
+
+
+**Criar Pod com Metrics**
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-podmetrics
+  labels:
+    app: nginx-podmetrics
+spec:
+  containers:
+  - name: nginx-podmetrics
+    image: nginx:latest
+    ports:
+    - containerPort: 80
+      name: http
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "200m"
+        memory: "256Mi"
+    volumeMounts:
+    - name: nginx-metrics-config
+      mountPath: /etc/nginx/conf.d/default.conf
+      subPath: nginx.conf
+  - name: nginx-exporter
+    image: nginx/nginx-prometheus-exporter:1.5
+    args:
+    - '-nginx.scrape-uri=http://localhost/metrics'
+    ports:
+    - containerPort: 9113
+      name: metrics
+    resources:
+      requests:
+        cpu: "0.05"
+        memory: "64Mi"
+      limits:
+        cpu: "0.3"
+        memory: "128Mi"
+  volumes:
+  - configMap:
+      defaultMode: 420
+      name: nginx-metrics-config
+    name: nginx-metrics-config
+
+```
+
+
+**Criar Pod Monitor**
+
+
+**Criar configmap de configuração para o nosso pod-metrics**
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-podmetrics-config
+  namespace: default
+  labels:
+    app: nginx-podmetrics
+  annotations:
+    description: Configuração customizada do nginx
+
+data:
+  nginx.conf: |
+    server {
+        listen       80;
+        server_name  localhost;
+
+        location / {
+            root   /usr/share/nginx/html;
+            index  index.html index.htm;
+        }
+
+        location /metrics {
+            stub_status on;
+            access_log  off;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   /usr/share/nginx/html;
+        }
+    }
+
+```
+
+**Pod Metrics**
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-podmetrics
+  labels:
+    app: nginx-podmetrics
+spec:
+  containers:
+  - name: nginx-podmetrics
+    image: nginx:latest
+    ports:
+    - containerPort: 80
+      name: http
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "200m"
+        memory: "256Mi"
+    volumeMounts:
+    - name: nginx-podmetrics-config
+      mountPath: /etc/nginx/conf.d/default.conf
+      subPath: nginx.conf
+  - name: nginx-podmetrics-exporter
+    image: nginx/nginx-prometheus-exporter:1.5
+    args:
+    - '-nginx.scrape-uri=http://localhost/metrics'
+    ports:
+    - containerPort: 9113
+      name: metrics
+    resources:
+      requests:
+        cpu: "0.05"
+        memory: "64Mi"
+      limits:
+        cpu: "0.3"
+        memory: "128Mi"
+  volumes:
+  - configMap:
+      defaultMode: 420
+      name: nginx-podmetrics-config
+    name: nginx-podmetrics-config
+```
+
+
+**Pod Monitor**
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: nginx-podmonitor
+  labels:
+    app: nginx-podmonitor
+spec:
+  namespaceSelector:
+    matchNames:
+    - default
+  selector:
+    matchLabels:
+      app: nginx-podmetrics
+  podMetricsEndpoints:
+    - interval: 15s
+      targetPort: 9113
+      path: /metrics
+
+```
+
+
+**Aplicar tudo no nosso cluster**
+
+```bash
+$ kubectl apply -f nginx-podmetrics-configmap.yaml 
+configmap/nginx-podmetrics-config created
+$
+$ kubectl apply -f nginx-podmetrics.yaml 
+pod/nginx-podmetrics created
+$
+$ $ kubectl apply -f nginx-podmonitor.yaml      
+podmonitor.monitoring.coreos.com/nginx-podmonitor created
+$
+```
+
+
+**Validar**
+
+```bash
+$ kubectl get podmonitors.monitoring.coreos.com     
+NAME               AGE
+nginx-podmonitor   31s
+
+$ kubectl describe podmonitors.monitoring.coreos.com
+Name:         nginx-podmonitor
+Namespace:    default
+Labels:       app=nginx-podmonitor
+Annotations:  <none>
+API Version:  monitoring.coreos.com/v1
+Kind:         PodMonitor
+Metadata:
+  Creation Timestamp:  2026-02-08T08:49:55Z
+  Generation:          1
+  Resource Version:    7544094
+  UID:                 33f19436-51c3-4c37-80c0-8a6e2e7d909a
+Spec:
+  Namespace Selector:
+    Match Names:
+      default
+  Pod Metrics Endpoints:
+    Interval:     15s
+    Path:         /metrics
+    Target Port:  9113
+  Selector:
+    Match Labels:
+      App:  nginx-podmetrics
+```
+
+
+**Fazer port forward do prometheus**
+
+```bash
+$ kubectl port-forward -n monitoring svc/prometheus-k8s 39090:9090
+```
+
