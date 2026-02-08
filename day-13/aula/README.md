@@ -82,6 +82,7 @@ What's next:
 ## Criando imagens Multistage
 
 **O que é Multistage**
+
 **Multistage** em Dockerfiles é uma técnica que permite usar múltiplas etapas (stages) de construção em um único Dockerfile. Isso é útil para criar imagens menores e mais seguras, pois você pode separar o processo de build (compilação, testes, etc.) do ambiente final de execução.
 
 Como funciona:
