@@ -92,9 +92,7 @@ monitoring   prometheus-k8s            7d
 monitoring   prometheus-operator       7d
 ```
 
-
 ## PodMonitors
-
 
 **Criar Pod com Metrics**
 
@@ -145,9 +143,7 @@ spec:
 
 ```
 
-
 **Criar Pod Monitor**
-
 
 **Criar configmap de configuração para o nosso pod-metrics**
 
@@ -234,7 +230,6 @@ spec:
     name: nginx-podmetrics-config
 ```
 
-
 **Pod Monitor**
 
 ```yaml
@@ -258,7 +253,6 @@ spec:
 
 ```
 
-
 **Aplicar tudo no nosso cluster**
 
 ```bash
@@ -272,7 +266,6 @@ $ $ kubectl apply -f nginx-podmonitor.yaml
 podmonitor.monitoring.coreos.com/nginx-podmonitor created
 $
 ```
-
 
 **Validar**
 
@@ -305,7 +298,6 @@ Spec:
     Match Labels:
       App:  nginx-podmetrics
 ```
-
 
 **Fazer port forward do prometheus**
 
@@ -451,7 +443,6 @@ spec:
         description: "Nginx instance {{ $labels.instance }} has been down for more than 1 minutes."
 ```
 
-
 ```bash
 $ kubectl apply -f nginx-prometheusrule.yaml 
 prometheusrule.monitoring.coreos.com/nginx-down-rule created
@@ -525,14 +516,11 @@ spec:
 
 ```
 
-
 ```bash
 $ kubectl apply -f nginx-prometheusrule.yaml                     
 prometheusrule.monitoring.coreos.com/nginx-down-rule configured
 $
 ```
-
-
 
 **Ver deltalhes do nosso grupo de regras**
 
@@ -599,6 +587,5 @@ spec:
         severity: warning
 
 ```
-
 
 ![Acrescentar regras do AlertManager no grupo](second-prometheus-rule.png)
