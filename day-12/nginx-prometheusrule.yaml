@@ -1,0 +1,47 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: nginx-down-rule
+  namespace: monitoring
+  labels:
+    prometheus: k8s
+    role: alert-rules
+    app.kubernetes.io/name: kube-prometheus
+    app.kubernetes.io/part-of: kube-prometheus
+spec:
+  groups:
+  - name: nginx-prometheus-rules
+    rules:
+    - alert: NginxDown
+      expr: nginx_up == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Nginx instance {{ $labels.instance }} is down"
+        description: "Nginx instance {{ $labels.instance }} has been down for more than 1 minutes."
+    - alert: NginxHighErrorRate
+      expr: sum(rate(nginx_http_requests_total{status=~"5.."}[5m])) by (instance) > 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High error rate on Nginx instance {{ $labels.instance }}"
+        description: "Nginx is returning 5xx errors at a high rate (> 1 req/sec) for more than 5 minutes."
+    - alert: NginxHighLatency
+      expr: histogram_quantile(0.95, sum(rate(nginx_request_duration_seconds_bucket[5m])) by (le, instance)) > 0.5
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High latency on Nginx instance {{ $labels.instance }}"
+        description: "95th percentile latency for Nginx requests is above 500ms for more than 5 minutes."
+    - alert: NginxHighRequestRate
+      expr: sum(rate(nginx_http_requests_total[1m])) by (instance) > 100
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High request rate on Nginx instance {{ $labels.instance }}"
+        description: "Nginx is receiving more than 100 requests per second for more than 5 minutes."        
+

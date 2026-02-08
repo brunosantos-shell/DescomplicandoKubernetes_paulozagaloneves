@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: nginx-high-error-rate
+  namespace: monitoring
+  labels:
+    prometheus: k8s
+    role: alert-rules
+    app.kubernetes.io/name: kube-prometheus
+    app.kubernetes.io/part-of: kube-prometheus
+spec:
+  groups:
+  - name: nginx-prometheus-rules
+    rules:
+    - alert: NginxHighErrorRate
+      expr: sum(rate(nginx_http_requests_total{status=~"5.."}[5m])) by (instance) > 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High error rate on Nginx instance {{ $labels.instance }}"
+        description: "Nginx is returning 5xx errors at a high rate (> 1 req/sec) for more than 5 minutes."
